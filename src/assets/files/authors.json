@@ -1,0 +1,29 @@
+{
+    "authors": [
+        {
+            "_id": 1, 
+            "name": "BBC Future",
+            "avatar": "bbc.jpeg"
+        },
+        {
+            "_id": 2, 
+            "name": "G1",
+            "avatar": "g1.jpeg"
+        },
+        {
+            "_id": 3, 
+            "name": "Tecmundo",
+            "avatar": "tecmundo.jpeg"
+    },
+        {
+            "_id": 4, 
+            "name": "R7",
+            "avatar": "r7.jpeg"
+        },
+        {
+            "_id": 5, 
+            "name": "Olhar Digital",
+            "avatar": "olhar-digital.jpeg"
+        }        
+    ]
+}
