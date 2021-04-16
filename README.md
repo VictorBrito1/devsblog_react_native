@@ -16,4 +16,4 @@ Funcionalidades:
 
 Obs: Foi utilizado jsons estáticos com dados fakes, visto que a aplicação não possui um back-end.
 
-#### Rodar o comando "npm install --force" para instalar as dependências.
+#### Rodar o comando "yarn" para instalar as dependências.
