@@ -6,11 +6,8 @@ import SyncStorage from 'sync-storage';
 import Swipeable from 'react-native-swipeable-row';
 import Moment from 'react-moment';
 import 'moment-timezone';
-
-import staticComments from '../../assets/files/comments.json';
-import avatar from '../../assets/images/avatar.jpeg';
-import { 
-    Avatar,
+import { getComments, addComment, removeComment } from '../../api';
+import {
     Spacer,
     Centralized,
     CommentDivider,
@@ -25,7 +22,6 @@ import {
     PostTitleComment
 } from '../../assets/styles';
 
-const COMMENTS_PER_PAGE = 8;
 const COMMENT_MAX_SIZE = 100;
 
 export default class Comments extends React.Component {
@@ -36,7 +32,7 @@ export default class Comments extends React.Component {
             comments: [],
             updating: false,
             loading: false,
-            nextPage: 0,
+            nextPage: 1,
 
             displayedAddScreen: false,
             newCommentText: '',
@@ -49,51 +45,54 @@ export default class Comments extends React.Component {
 
     loadComments = () => {
         const { idFeed, comments, nextPage } = this.state;
-
         this.setState({loading: true});
 
-        const initialId = nextPage * COMMENTS_PER_PAGE + 1;
-        const endId = initialId + COMMENTS_PER_PAGE - 1;
-
-        const moreComments = staticComments.comments.filter((comment) => 
-            comment._id >= initialId && comment._id <= endId && comment.feed === idFeed
-        );
-
-        if (moreComments.length) {
-            this.setState({
-                nextPage: nextPage + 1,
-                comments: [...comments, ...moreComments],
-                updating: false,
-                loading: false
+        getComments(idFeed, nextPage)
+            .then((moreComments) => {
+                if (moreComments.length) {
+                    this.setState({
+                        nextPage: nextPage + 1,
+                        comments: [...comments, ...moreComments],
+                        updating: false,
+                        loading: false
+                    });
+                } else {
+                    this.setState({
+                        updating: false,
+                        loading: false
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error(`Erro exibindo comentários: ${error}`);
             });
-        } else {
-            this.setState({
-                updating: false,
-                loading: false
-            });
-        }
     };
 
     componentDidMount = () => {
         this.loadComments();
     };
 
-    confirmDeleteComment = (comment) => {
+    confirmRemoveComment = (comment) => {
         Alert.alert(null, 'Tem certeza que deseja remover o seu comentário?',
             [
-                { text: "SIM", onPress: () => this.deleteComment(comment)},
+                { text: "SIM", onPress: () => this.removeComment(comment)},
                 { text: "NÃO", style: 'cancel'}
             ]
         )
     };
 
-    deleteComment = (comment) => {
-        const { comments } = this.state;
-        const filteredComments = comments.filter((item) => item._id !== comment._id);
-
-        this.setState({ comments: filteredComments }, () => {
-            this.updateScreen();
-        }); 
+    removeComment = (comment) => {
+        removeComment(comment._id)
+            .then((result) => {
+                if (result.situation === 'ok') {
+                    this.setState({ nextPage: 1, comments: []}, () => {
+                        this.loadComments();
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error(`Erro removendo comentário: ${error}`);
+            });
     };
 
     showCurrentUserComment = (comment) => {
@@ -105,7 +104,7 @@ export default class Comments extends React.Component {
                         <View style={{ padding: 15 }}>
                             <Spacer/>
                             <Icon name="delete" color="#030303" size={28} onPress={() => {
-                                this.confirmDeleteComment(comment);
+                                this.confirmRemoveComment(comment);
                             }}/>
                         </View>
                     ]}
@@ -153,30 +152,26 @@ export default class Comments extends React.Component {
     };
 
     updateScreen = () => {
-        this.setState({ updating: true, loading: false, nextPage: 0, comments: []}, () => {
+        this.setState({ updating: true, loading: false, nextPage: 1, comments: []}, () => {
             this.loadComments();
         });
     };
 
     addComment = () => {
-        const { idFeed, comments, newCommentText } = this.state;
-        const user = SyncStorage.get('user');
+        const { idFeed, newCommentText } = this.state;
 
-        const comment = [
-            {
-                '_id': comments.length + 100,
-                'feed': idFeed,
-                'user': {
-                    'userId': 2,
-                    'email': user.email,
-                    'name': user.name,
-                },
-                'datetime': '2021-04-15T12:00-0500',
-                'content': newCommentText
-            }
-        ];
+        addComment(idFeed, newCommentText)
+            .then((result) => {
+                if (result.situation === 'ok') {
+                    this.setState({ nextPage: 1, comments: [] }, () => {
+                        this.loadComments();
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error(`Erro adicionado comentário: ${error}`)
+            });
 
-        this.setState({ comments: [...comment, ...comments] });
         this.changeDisplayAddScreen();
     };
 
@@ -261,7 +256,6 @@ export default class Comments extends React.Component {
 
                     centerComponent={
                         <Centralized>
-                            <Avatar source={avatar} />
                             <PostTitleComment>{post.title}</PostTitleComment>
                         </Centralized>
                     }
@@ -284,7 +278,7 @@ export default class Comments extends React.Component {
 
                         keyExtractor={(item) => String(item._id)}
                         renderItem={({item}) => {
-                            if (item.user.email == user.email) {
+                            if (item.user.email == user.account) {
                                 return this.showCurrentUserComment(item);
                             } else {
                                 return this.showOtherUsersComment(item);

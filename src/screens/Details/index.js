@@ -1,6 +1,4 @@
 import React from 'react';
-import staticFeeds from '../../assets/files/feeds.json';
-
 import { View } from 'react-native';
 import { Header } from 'react-native-elements';
 import { SliderBox } from 'react-native-image-slider-box';
@@ -9,11 +7,7 @@ import Icon from 'react-native-vector-icons/AntDesign';
 import Share from '../../components/Share';
 import SyncStorage from 'sync-storage';
 import Toast from 'react-native-simple-toast';
-
-import slide1 from '../../assets/images/slide1.jpeg';
-import slide2 from '../../assets/images/slide2.jpeg';
-import slide3 from '../../assets/images/slide3.jpeg';
-import avatar from '../../assets/images/avatar.jpeg';
+import { getFeed, feedLiked, getImage, like, dislike } from '../../api';
 
 import {
     Avatar,
@@ -25,6 +19,8 @@ import {
     Spacer,
     LeftRow
 } from '../../assets/styles';
+
+const TOTAL_SLIDE_IMAGES = 3;
 
 export default class Details extends React.Component {
     constructor(props) {
@@ -39,15 +35,28 @@ export default class Details extends React.Component {
 
     loadFeed = () => {
         const { idFeed } = this.state;
-        const filteredFeeds = staticFeeds.feeds.filter((feed) => feed._id === idFeed);
 
-        if (filteredFeeds.length) {
-            this.setState({ feed: filteredFeeds[0] });
-        }
+        getFeed(idFeed)
+            .then((currentFeed) => {
+                this.setState({ feed: currentFeed }, () => {
+                    this.checkUserLiked();
+                });
+            })
+            .catch((error) => {
+                console.error(`Erro pegando detalhes do feed: ${error}`);
+            });
+
     };
 
     showSlides = () => {
-        const slides = [ slide1, slide2, slide3 ];
+        const { feed } = this.state;
+        let slides = [];
+
+        for (let i = 0; i < TOTAL_SLIDE_IMAGES; i++) {
+            if (feed.post.blobs[i].file) {
+                slides = [...slides, getImage(feed.post.blobs[i].file)];
+            }
+        }
 
         return (
             <SliderBox
@@ -69,36 +78,53 @@ export default class Details extends React.Component {
         )
     };
 
+    checkUserLiked = () => {
+        const { idFeed } = this.state;
+
+        feedLiked(idFeed)
+            .then((result) => {
+                this.setState({ liked: (result.likes > 0) });
+            })
+            .catch((error) => {
+                console.error(`Erro verificando se usuário deu like: ${error}`)
+            });
+    }
+
     componentDidMount = () => {
         this.loadFeed();
     };
 
     like = () => {
-        const { feed } = this.state;
-        const user = SyncStorage.get('user');
-        console.log('Adicionado like do usuario: ' + user.name);
-
-        feed.likes++;
-
-        this.setState({
-            feed: feed,
-            liked: true,
-        }, () => {
-            Toast.show('Obrigado pela sua avaliação!', Toast.LONG);
-        });
+        const { idFeed } = this.state;
+        
+        like(idFeed)
+            .then((result) => {
+                if (result.situation === 'ok') {
+                    this.loadFeed();
+                    Toast.show('Obrigado pela sua avaliação!', Toast.LONG);
+                } else {
+                    Toast.show('Ocorreu um erro nessa operação. Tente novamente.', Toast.LONG);
+                }
+            })
+            .catch((error) => {
+                console.error(`Erro registrando like: ${error}`)
+            });
     };
 
     dislike = () => {
-        const { feed } = this.state;
-        const user = SyncStorage.get('user');
-        console.log('Removendo like do usuario: ' + user.name);
+        const { idFeed } = this.state;
 
-        feed.likes--;
-
-        this.setState({
-            feed: feed,
-            liked: false,
-        });
+        dislike(idFeed)
+            .then((result) => {
+                if (result.situation === 'ok') {
+                    this.loadFeed();
+                } else {
+                    Toast.show('Ocorreu um erro nessa operação. Tente novamente.', Toast.LONG);
+                }
+            })
+            .catch((error) => {
+                console.error(`Erro removendo like: ${error}`)
+            });
     };
 
     render = () => {
@@ -117,7 +143,7 @@ export default class Details extends React.Component {
 
                         centerComponent={
                             <Centralized>
-                                <Avatar source={avatar}/>
+                                <Avatar source={getImage(feed.author.avatar)}/>
                                 <AuthorName>{feed.author.name}</AuthorName>
                             </Centralized>
                         }

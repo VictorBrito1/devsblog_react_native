@@ -1,5 +1,4 @@
 import React from 'react';
-import staticFeeds from '../../assets/files/feeds.json';
 import { SearchInput, Centralized, Spacer } from '../../assets/styles';
 
 import { View, FlatList } from 'react-native';
@@ -9,7 +8,7 @@ import Icon from 'react-native-vector-icons/AntDesign';
 import Menu from '../../components/Menu';
 import DrawerLayout from 'react-native-drawer-layout';
 
-const FEEDS_PER_PAGE = 4;
+import { getFeeds, getFeedsByPostTitle, getFeedsByAuthor } from '../../api';
 
 export default class Feeds extends React.Component {
     constructor(props) {
@@ -18,7 +17,7 @@ export default class Feeds extends React.Component {
         this.filterByAuthor = this.filterByAuthor.bind(this);
 
         this.state = {
-            nextPage: 0,
+            nextPage: 1,
             feeds: [],
             postTitle: null,
             loading: false,
@@ -26,47 +25,58 @@ export default class Feeds extends React.Component {
             chosenAuthor: null,
         };
     };
+
+    showMoreFeeds = (moreFeeds) => {
+        const { nextPage, feeds } = this.state;
+
+        if (moreFeeds.length) {
+            console.log(`Adicionando ${moreFeeds.length} feeds`);
+
+            this.setState({
+                nextPage: nextPage + 1,
+                feeds: [...feeds, ...moreFeeds],
+                loading: false,
+                updating: false
+            });
+        } else {
+            this.setState({
+                loading: false,
+                updating: false,
+            });
+        }
+    };
     
     loadFeeds = () => {
-        const { nextPage, feeds, postTitle, chosenAuthor } = this.state;
+        const { nextPage, postTitle, chosenAuthor } = this.state;
 
         this.setState({
             loading: true
         });
 
         if (chosenAuthor) {
-            const moreFeeds = staticFeeds.feeds.filter((feed) => feed.author._id === chosenAuthor._id);
-
-            this.setState({
-                feeds: moreFeeds,
-                loading: false,
-                updating: false
-            });
-        } else if (postTitle) {
-            const moreFeeds = staticFeeds.feeds.filter((feed) => 
-                feed.post.title.toLowerCase().includes(postTitle.toLowerCase())
-            );
-
-            this.setState({
-                feeds: moreFeeds,
-                loading: false,
-                updating: false
-            });
-        } else {
-            const initialId = nextPage * FEEDS_PER_PAGE + 1;
-            const endId = initialId + FEEDS_PER_PAGE - 1;
-            const moreFeeds = staticFeeds.feeds.filter((feed) => feed._id >= initialId && feed._id <= endId);
-
-            if (moreFeeds.length) {
-                console.log('Adicionando ' + moreFeeds.length + ' feeds');
-
-                this.setState({
-                    nextPage: nextPage + 1,
-                    feeds: [...feeds, ...moreFeeds],
-                    loading: false,
-                    updating: false
+            getFeedsByAuthor(chosenAuthor._id, nextPage)
+                .then((moreFeeds) => {
+                    this.showMoreFeeds(moreFeeds)
+                })
+                .catch((error) => {
+                    console.error(`Erro acessando feeds por autor: ${error}`);
                 });
-            }
+        } else if (postTitle) {
+            getFeedsByPostTitle(postTitle, nextPage)
+                .then(moreFeeds => {
+                    this.showMoreFeeds(moreFeeds);
+                })
+                .catch(error => {
+                    console.error(`Erro acessando feeds pelo título: ${error}`);
+                });
+        } else {
+            getFeeds(nextPage)
+                .then(moreFeeds => {
+                    this.showMoreFeeds(moreFeeds)
+                })
+                .catch(error => {
+                    console.error(`Erro acessando feeds: ${error}`);
+                });
         }
     };
 
@@ -101,7 +111,12 @@ export default class Feeds extends React.Component {
                     style={{padding: 8}} 
                     size={25} name='search1'
                     onPress={() => {
-                        this.loadFeeds();
+                        this.setState({
+                            nextPage: 1,
+                            feeds: []
+                        }, () => {
+                            this.loadFeeds();
+                        });
                     }}
                 />
             </Centralized>
@@ -163,7 +178,7 @@ export default class Feeds extends React.Component {
     };
 
     updateScreen = () => {
-        this.setState({ updating: true, feeds: [], nextPage: 0, postTitle: null, chosenAuthor: null }, () => {
+        this.setState({ updating: true, feeds: [], nextPage: 1, postTitle: null, chosenAuthor: null }, () => {
             this.loadFeeds();
         });
     };
@@ -175,7 +190,7 @@ export default class Feeds extends React.Component {
     };
 
     filterByAuthor = (author) => {
-        this.setState({ chosenAuthor: author }, () => {
+        this.setState({ chosenAuthor: author, nextPage: 1, feeds: [] }, () => {
             this.loadFeeds();
         });
 

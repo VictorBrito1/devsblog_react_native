@@ -56,6 +56,7 @@ export const ContainerMenu = styled.View`
     flex: 1;
     font-size: 18px;
     background-color: #fff;
+    padding: 4px;
 `;
 
 export const LeftRow = styled.View`

@@ -4,9 +4,7 @@ import { ScrollView, TouchableOpacity } from 'react-native';
 import { LoginOptionsMenu } from '../../components/Login';
 import Toast from 'react-native-simple-toast';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
-
-import avatar from '../../assets/images/avatar.jpeg';
-import staticAuthors from '../../assets/files/authors.json';
+import { getAuthors, getImage } from '../../api';
 import { 
     Avatar,
     AuthorName,
@@ -21,9 +19,21 @@ export default class Menu extends React.Component {
 
         this.state = {
             update: true,
-            filter: props.filter
+            filter: props.filter,
+
+            authors: []
         };
     };
+
+    componentDidMount = () => {
+        getAuthors()
+            .then((authors) => {
+                this.setState({ authors: authors });
+            })
+            .catch((error) => {
+                console.error(`Ocorreu um erro criando menu de empresas: ${error}`)
+            });
+    }
 
     showAuthor = (author) => {
         const { filter } = this.state;
@@ -33,7 +43,7 @@ export default class Menu extends React.Component {
                 filter(author);
             }}>
                 <LeftRow>
-                    <Avatar source={avatar}/>
+                    <Avatar source={getImage(author.avatar)}/>
                     <AuthorName>{author.name}</AuthorName>
                 </LeftRow>
                 <MenuDivider/>
@@ -54,7 +64,7 @@ export default class Menu extends React.Component {
     };
 
     render = () => {
-        const authors = staticAuthors.authors;
+        const { authors } = this.state;
 
         return (
             <SafeAreaInsetsContext.Consumer>
