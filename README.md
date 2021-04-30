@@ -16,4 +16,4 @@ Funcionalidades:
 
 [Back-end](https://github.com/VictorBrito1/devsblog_backend_python)
 
-#### Rodar o comando "yarn" para instalar as dependências.
+##### Rodar o comando "yarn" para instalar as dependências e ajustar as rotas de acesso aos microserviços no arquivo "src/api/index.js".
