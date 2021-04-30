@@ -14,6 +14,6 @@ Funcionalidades:
 - Like/dislike de um post;
 - Tela de comentários com a possibilidade de adicionar um novo comentário ou remover;
 
-Obs: Foi utilizado jsons estáticos com dados fakes, visto que a aplicação não possui um back-end.
+[Back-end](https://github.com/VictorBrito1/devsblog_backend_python)
 
 #### Rodar o comando "yarn" para instalar as dependências.
